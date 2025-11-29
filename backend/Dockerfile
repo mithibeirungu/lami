@@ -86,11 +86,15 @@ WORKDIR /var/www/html
 # Copy built application from builder stage
 COPY --from=builder --chown=www-data:www-data /var/www/html /var/www/html
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # Set proper permissions
 RUN chmod -R 755 /var/www/html/storage \
     && chmod -R 755 /var/www/html/bootstrap/cache
 
-# Expose port 8000
+# Expose port (Render sets PORT dynamically, default to 8000)
 EXPOSE 8000
 
 # Switch to non-root user
@@ -100,5 +104,5 @@ USER www-data
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
     CMD php artisan --version || exit 1
 
-# Start PHP built-in server (for Render)
-CMD php artisan serve --host=0.0.0.0 --port=8000
+# Use entrypoint script
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

@@ -1,5 +1,5 @@
 # Stage 1: Build stage
-FROM php:8.2-fpm-alpine AS builder
+FROM php:8.2-cli-alpine AS builder
 
 # Install system dependencies and PHP extensions needed for building
 RUN apk add --no-cache \
@@ -11,12 +11,16 @@ RUN apk add --no-cache \
     unzip \
     oniguruma-dev \
     postgresql-dev \
+    mysql-dev \
+    freetype-dev \
+    libjpeg-turbo-dev \
+    libwebp-dev \
     nodejs \
     npm
 
-# Install PHP extensions
-RUN docker-php-ext-install \
-    pdo \
+# Configure and install PHP extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
+    && docker-php-ext-install -j$(nproc) \
     pdo_mysql \
     pdo_pgsql \
     mbstring \
@@ -58,7 +62,7 @@ RUN npm run build
 RUN rm -rf node_modules
 
 # Stage 2: Production stage
-FROM php:8.2-fpm-alpine
+FROM php:8.2-cli-alpine
 
 # Install only runtime dependencies
 RUN apk add --no-cache \
@@ -66,11 +70,25 @@ RUN apk add --no-cache \
     libzip \
     oniguruma \
     postgresql-libs \
-    mysql-client
+    mysql-client \
+    freetype \
+    libjpeg-turbo \
+    libwebp
 
-# Install PHP extensions (runtime only)
-RUN docker-php-ext-install \
-    pdo \
+# Install build dependencies for PHP extensions
+RUN apk add --no-cache --virtual .build-deps \
+    libpng-dev \
+    libzip-dev \
+    oniguruma-dev \
+    postgresql-dev \
+    mysql-dev \
+    freetype-dev \
+    libjpeg-turbo-dev \
+    libwebp-dev
+
+# Configure and install PHP extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
+    && docker-php-ext-install -j$(nproc) \
     pdo_mysql \
     pdo_pgsql \
     mbstring \
@@ -79,6 +97,9 @@ RUN docker-php-ext-install \
     bcmath \
     gd \
     zip
+
+# Remove build dependencies
+RUN apk del .build-deps
 
 # Set working directory
 WORKDIR /var/www/html

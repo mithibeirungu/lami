@@ -22,7 +22,7 @@ const submit = async () => {
       email: email.value,
       full_name: full_name.value,
       password: password.value,
-      admin_secret: admin_secret.value,
+      invite_code: admin_secret.value,
     })
     alert('Admin registered')
     router.push(props.redirectTo)
@@ -58,7 +58,7 @@ const submit = async () => {
           <input class="field-input" type="password" v-model="password" required />
         </div>
         <div>
-          <label class="field-label">Admin secret</label>
+          <label class="field-label">Invite code</label>
           <input class="field-input" v-model="admin_secret" required />
         </div>
         <button class="btn btn-primary glow-pill" type="submit">Register admin</button>

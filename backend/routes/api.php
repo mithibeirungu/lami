@@ -38,9 +38,15 @@ Route::middleware('auth:sanctum')->group(function () {
 	// Favorites - toggle and list
 	Route::post('cars/{car}/favorite', [FavoriteController::class, 'toggle']);
 	Route::get('favorites', [FavoriteController::class, 'index']);
+
+    // Allow an authenticated user to request an admin verification code (will be logged to server)
+    Route::post('admin/request-code', [\App\Http\Controllers\AdminInvitationController::class, 'requestForUser']);
 });
 
 // Admin-only API routes
 Route::prefix('admin')->middleware(['auth:sanctum', \App\Http\Middleware\EnsureAdmin::class])->group(function () {
 	Route::get('dashboard', [\App\Http\Controllers\AdminController::class, 'dashboard']);
+	// Admin invitation management
+	Route::post('invites', [\App\Http\Controllers\AdminInvitationController::class, 'store']);
+	Route::get('invites', [\App\Http\Controllers\AdminInvitationController::class, 'index']);
 });

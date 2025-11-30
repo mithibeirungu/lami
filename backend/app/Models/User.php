@@ -25,7 +25,7 @@ class User extends Authenticatable
         'password',
         'api_token',
     ];
-    
+
     public function cars() {
         return $this->hasMany(Car::class);
     }

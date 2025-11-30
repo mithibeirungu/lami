@@ -24,7 +24,7 @@ onMounted(load)
 
 const filteredCars = computed(() => {
   if (!searchQuery.value.trim()) return cars.value
-  
+
   const query = searchQuery.value.toLowerCase()
   return cars.value.filter(car => {
     return (

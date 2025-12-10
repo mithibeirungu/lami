@@ -6,7 +6,6 @@ import api from '../services/api'
 const route = useRoute()
 const car = ref(null)
 const commentText = ref('')
-const rating = ref(null)
 const loading = ref(true)
 const fallbackImage = 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1400&q=70'
 
@@ -23,7 +22,12 @@ const load = async () => {
 
 onMounted(load)
 
-const heroImage = computed(() => car.value?.image_url || fallbackImage)
+const heroImage = computed(() => {
+  if (car.value?.thumbnail_image) return car.value.thumbnail_image
+  if (car.value?.images?.[0]?.image_url) return car.value.images[0].image_url
+  return fallbackImage
+})
+
 const publishDate = computed(() => {
   if (!car.value?.created_at) return ''
   return new Date(car.value.created_at).toLocaleDateString('en-US', {
@@ -34,32 +38,33 @@ const publishDate = computed(() => {
 })
 
 const submitComment = async () => {
-  const user_id = localStorage.getItem('user_id')
-  if (!user_id) {
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  if (!user.user_id) {
     alert('Please login to comment')
     return
   }
   try {
-    await api.postComment(route.params.id, { comment_text: commentText.value, rating: rating.value, user_id })
+    await api.postComment(route.params.id, { content: commentText.value })
     commentText.value = ''
-    rating.value = null
     load()
   } catch (e) {
     console.error(e)
+    alert('Failed to post comment')
   }
 }
 
 const toggleFavorite = async () => {
-  const user_id = localStorage.getItem('user_id')
-  if (!user_id) {
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  if (!user.user_id) {
     alert('Please login to favorite')
     return
   }
   try {
-    await api.toggleFavorite(route.params.id, { user_id })
+    await api.toggleFavorite(route.params.id, {})
     load()
   } catch (e) {
     console.error(e)
+    alert('Failed to toggle favorite')
   }
 }
 </script>
@@ -68,11 +73,11 @@ const toggleFavorite = async () => {
   <article class="article-page container" v-if="car">
     <header class="article-header">
       <div class="article-meta">
-        <span class="article-tag">{{ car.brand }}</span>
+        <span class="article-tag">{{ car.brand?.name }}</span>
         <span class="article-date">{{ publishDate }}</span>
       </div>
-      <h1 class="article-title">{{ car.car_name }}</h1>
-      <p class="article-subtitle">{{ car.brand }} {{ car.model }} • {{ car.year }}</p>
+      <h1 class="article-title">{{ car.title }}</h1>
+      <p class="article-subtitle">{{ car.brand?.name }} {{ car.model }} • {{ car.year }}</p>
     </header>
 
     <div class="article-hero-image" :style="{ backgroundImage: `url(${heroImage})` }"></div>
@@ -81,11 +86,15 @@ const toggleFavorite = async () => {
       <div class="article-specs">
         <div class="spec-item">
           <span class="spec-label">Body Type</span>
-          <span class="spec-value">{{ car.body_type || '—' }}</span>
+          <span class="spec-value">{{ car.bodyType?.name || '—' }}</span>
         </div>
         <div class="spec-item">
-          <span class="spec-label">Engine Power</span>
-          <span class="spec-value">{{ car.engine_power || '—' }} hp</span>
+          <span class="spec-label">Horsepower</span>
+          <span class="spec-value">{{ car.horsepower || '—' }} hp</span>
+        </div>
+        <div class="spec-item">
+          <span class="spec-label">Torque</span>
+          <span class="spec-value">{{ car.torque || '—' }} Nm</span>
         </div>
         <div class="spec-item">
           <span class="spec-label">Transmission</span>
@@ -95,13 +104,25 @@ const toggleFavorite = async () => {
           <span class="spec-label">Fuel Type</span>
           <span class="spec-value">{{ car.fuel_type || '—' }}</span>
         </div>
-        <div class="spec-item" v-if="car.top_speed">
-          <span class="spec-label">Top Speed</span>
-          <span class="spec-value">{{ car.top_speed }} km/h</span>
+        <div class="spec-item">
+          <span class="spec-label">Engine Type</span>
+          <span class="spec-value">{{ car.engine_type || '—' }}</span>
         </div>
-        <div class="spec-item" v-if="car.acceleration">
-          <span class="spec-label">0-100 km/h</span>
-          <span class="spec-value">{{ car.acceleration }}s</span>
+        <div class="spec-item">
+          <span class="spec-label">Engine Size</span>
+          <span class="spec-value">{{ car.engine_size || '—' }}</span>
+        </div>
+        <div class="spec-item">
+          <span class="spec-label">Seating</span>
+          <span class="spec-value">{{ car.seating_capacity || '—' }}</span>
+        </div>
+        <div class="spec-item">
+          <span class="spec-label">Drive Type</span>
+          <span class="spec-value">{{ car.drive_type || '—' }}</span>
+        </div>
+        <div class="spec-item" v-if="car.price">
+          <span class="spec-label">Price</span>
+          <span class="spec-value">${{ car.price.toLocaleString() }}</span>
         </div>
       </div>
 
@@ -110,21 +131,28 @@ const toggleFavorite = async () => {
       </div>
 
       <div class="article-actions">
-        <button class="btn btn-ghost" @click="toggleFavorite">Save to favorites</button>
+        <button class="btn btn-ghost" @click="toggleFavorite">♥ Save to favorites</button>
       </div>
     </div>
+
+    <!-- Images Gallery -->
+    <section class="images-gallery" v-if="car.images?.length">
+      <h2>Gallery</h2>
+      <div class="gallery-grid">
+        <img v-for="img in car.images" :key="img.image_id" :src="img.image_url" :alt="img.title" />
+      </div>
+    </section>
 
     <section class="comments-section">
       <h2 class="comments-title">Reader Comments</h2>
       <p class="comments-count" v-if="car.comments?.length">{{ car.comments.length }} comment{{ car.comments.length !== 1 ? 's' : '' }}</p>
 
       <div v-if="car.comments?.length" class="comments-list">
-        <div v-for="c in car.comments" :key="c.id" class="comment-item">
+        <div v-for="c in car.comments" :key="c.comment_id" class="comment-item">
           <div class="comment-header">
             <strong class="comment-author">{{ c.user?.username || 'Anonymous' }}</strong>
-            <span class="comment-rating" v-if="c.rating">⭐ {{ c.rating }}/5</span>
           </div>
-          <p class="comment-text">{{ c.comment_text }}</p>
+          <p class="comment-text">{{ c.content }}</p>
         </div>
       </div>
       <div v-else class="empty-comments">
@@ -141,23 +169,14 @@ const toggleFavorite = async () => {
           required
         ></textarea>
         <div class="comment-form-footer">
-          <input
-            type="number"
-            min="1"
-            max="5"
-            step="1"
-            v-model.number="rating"
-            placeholder="Rating (1-5)"
-            class="comment-rating-input"
-          />
           <button class="btn btn-primary" type="submit">Post Comment</button>
         </div>
       </form>
     </section>
   </article>
 
-  <div v-else-if="loading" class="empty container" style="padding: 80px 0">Loading article...</div>
-  <div v-else class="empty container" style="padding: 80px 0">Article not found.</div>
+  <div v-else-if="loading" class="empty container" style="padding: 80px 0">Loading car...</div>
+  <div v-else class="empty container" style="padding: 80px 0">Car not found.</div>
 </template>
 
 <style scoped>
@@ -265,6 +284,29 @@ const toggleFavorite = async () => {
   border-top: 1px solid var(--border);
 }
 
+.images-gallery {
+  margin-bottom: 60px;
+  padding-bottom: 40px;
+  border-bottom: 1px solid var(--border);
+}
+
+.images-gallery h2 {
+  margin-bottom: 20px;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.gallery-grid img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
 .comments-section {
   padding-top: 40px;
   border-top: 1px solid var(--border);
@@ -305,11 +347,6 @@ const toggleFavorite = async () => {
 .comment-author {
   color: var(--accent);
   font-size: 0.95rem;
-}
-
-.comment-rating {
-  color: var(--muted);
-  font-size: 0.85rem;
 }
 
 .comment-text {
@@ -363,21 +400,6 @@ const toggleFavorite = async () => {
   align-items: center;
 }
 
-.comment-rating-input {
-  padding: 10px 14px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: rgba(8, 12, 28, 0.6);
-  color: var(--text);
-  font-size: 0.95rem;
-  width: 120px;
-}
-
-.comment-rating-input:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-
 @media (max-width: 768px) {
   .article-hero-image {
     height: 300px;
@@ -387,13 +409,13 @@ const toggleFavorite = async () => {
     grid-template-columns: 1fr;
   }
 
+  .gallery-grid {
+    grid-template-columns: 1fr;
+  }
+
   .comment-form-footer {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .comment-rating-input {
-    width: 100%;
   }
 }
 </style>

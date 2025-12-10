@@ -34,6 +34,10 @@ export default {
   updateCar(id, payload) { return api.put(`/cars/${id}`, payload); },
   deleteCar(id) { return api.delete(`/cars/${id}`); },
 
+  // Lookup endpoints for forms
+  getBrands() { return api.get('/brands'); },
+  getBodyTypes() { return api.get('/body-types'); },
+
   // Comments
   postComment(carId, payload) { return api.post(`/cars/${carId}/comments`, payload); },
 

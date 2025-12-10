@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -10,31 +9,42 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, Notifiable;
+    use HasApiTokens, Notifiable, HasFactory;
+
+    protected $primaryKey = 'user_id';
+    public $incrementing = true;
+    protected $keyType = 'int';
 
     protected $fillable = [
         'username',
         'email',
-        'password',
+        'password_hash',
         'full_name',
-        'type_of_user',
-        'api_token',
+        'role',
+        'avatar_url',
     ];
 
     protected $hidden = [
-        'password',
-        'api_token',
+        'password_hash',
     ];
 
-    public function cars() {
-        return $this->hasMany(Car::class);
+    public function carsCreated()
+    {
+        return $this->hasMany(Car::class, 'created_by', 'user_id');
     }
 
-    public function comments() {
-        return $this->hasMany(Comment::class);
+    public function comments()
+    {
+        return $this->hasMany(Comment::class, 'user_id', 'user_id');
     }
 
-    public function favorites() {
-        return $this->hasMany(Favorite::class);
+    public function favorites()
+    {
+        return $this->hasMany(Favorite::class, 'user_id', 'user_id');
+    }
+
+    public function getAuthPassword()
+    {
+        return $this->password_hash;
     }
 }

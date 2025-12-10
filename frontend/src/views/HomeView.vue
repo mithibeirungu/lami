@@ -21,6 +21,12 @@ onMounted(load)
 const featuredCars = computed(() => cars.value.slice(0, 3))
 const recentCars = computed(() => cars.value.slice(3, 9))
 
+const getCarImage = (car) => {
+  if (car.thumbnail_image) return car.thumbnail_image
+  if (car.images?.[0]?.image_url) return car.images[0].image_url
+  return 'https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?auto=format&fit=crop&w=900&q=60'
+}
+
 const open = (id) => router.push({ name: 'car', params: { id } })
 </script>
 
@@ -43,24 +49,24 @@ const open = (id) => router.push({ name: 'car', params: { id } })
       <div class="featured-grid">
         <article
           v-for="c in featuredCars"
-          :key="c.id"
+          :key="c.car_id"
           class="featured-card"
-          @click="open(c.id)"
+          @click="open(c.car_id)"
         >
-          <div class="featured-image" :style="{ backgroundImage: `url(${c.image_url || 'https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?auto=format&fit=crop&w=900&q=60'})` }"></div>
+          <div class="featured-image" :style="{ backgroundImage: `url(${getCarImage(c)})` }"></div>
           <div class="featured-content">
             <div class="featured-meta">
               <span class="featured-tag">Featured</span>
               <span class="featured-date">{{ new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }}</span>
             </div>
-            <h3 class="featured-title">{{ c.car_name }}</h3>
-            <p class="featured-subtitle">{{ c.brand }} {{ c.model }} • {{ c.year }}</p>
+            <h3 class="featured-title">{{ c.title }}</h3>
+            <p class="featured-subtitle">{{ c.brand?.name }} {{ c.model }} • {{ c.year }}</p>
             <p class="featured-excerpt">
               {{ c.description?.slice(0, 200) }}{{ c.description && c.description.length > 200 ? '...' : '' }}
             </p>
             <div class="featured-specs">
-              <span>{{ c.body_type }}</span>
-              <span>{{ c.engine_power }} hp</span>
+              <span>{{ c.bodyType?.name }}</span>
+              <span>{{ c.horsepower }} hp</span>
               <span>{{ c.fuel_type }}</span>
             </div>
           </div>
@@ -76,24 +82,24 @@ const open = (id) => router.push({ name: 'car', params: { id } })
       <div class="blog-grid">
         <article
           v-for="c in recentCars"
-          :key="c.id"
+          :key="c.car_id"
           class="blog-card"
-          @click="open(c.id)"
+          @click="open(c.car_id)"
         >
-          <div class="blog-image" :style="{ backgroundImage: `url(${c.image_url || 'https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?auto=format&fit=crop&w=900&q=60'})` }"></div>
+          <div class="blog-image" :style="{ backgroundImage: `url(${getCarImage(c)})` }"></div>
           <div class="blog-content">
             <div class="blog-meta">
               <span class="blog-date">{{ new Date(c.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) }}</span>
-              <span class="blog-tag">{{ c.brand }}</span>
+              <span class="blog-tag">{{ c.brand?.name }}</span>
             </div>
-            <h3 class="blog-title">{{ c.car_name }}</h3>
-            <p class="blog-subtitle">{{ c.brand }} {{ c.model }} • {{ c.year }}</p>
+            <h3 class="blog-title">{{ c.title }}</h3>
+            <p class="blog-subtitle">{{ c.brand?.name }} {{ c.model }} • {{ c.year }}</p>
             <p class="blog-excerpt">
               {{ c.description?.slice(0, 150) }}{{ c.description && c.description.length > 150 ? '...' : '' }}
             </p>
             <div class="blog-footer">
-              <span class="blog-spec">{{ c.body_type }}</span>
-              <span class="blog-spec">{{ c.engine_power }} hp</span>
+              <span class="blog-spec">{{ c.bodyType?.name }}</span>
+              <span class="blog-spec">{{ c.horsepower }} hp</span>
               <span class="blog-spec">{{ c.fuel_type }}</span>
             </div>
           </div>

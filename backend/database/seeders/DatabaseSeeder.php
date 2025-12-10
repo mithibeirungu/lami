@@ -23,8 +23,11 @@ class DatabaseSeeder extends Seeder
         // ]);
 
         $this->call([
-            AdminSeeder::class,
-            \Database\Seeders\CarsSeeder::class,
+            BrandSeeder::class,
+            BodyTypeSeeder::class,
+            ImageCategorySeeder::class,
+            UserSeeder::class,
+            CarSeeder::class,
         ]);
     }
 }

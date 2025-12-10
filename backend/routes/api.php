@@ -18,12 +18,15 @@ use App\Http\Controllers\FavoriteController;
 
 // Auth
 Route::post('/register', [AuthController::class, 'register']);
-Route::post('/register-admin', [AuthController::class, 'registerAdmin']);
 Route::post('/login', [AuthController::class, 'login']);
 
 // Cars - public list and detail
 Route::get('cars', [CarController::class, 'index']);
 Route::get('cars/{car}', [CarController::class, 'show']);
+
+// Public lookup endpoints for dropdowns
+Route::get('brands', [\App\Http\Controllers\CarController::class, 'getBrands']);
+Route::get('body-types', [\App\Http\Controllers\CarController::class, 'getBodyTypes']);
 
 // Protected routes (require Sanctum token)
 Route::middleware('auth:sanctum')->group(function () {

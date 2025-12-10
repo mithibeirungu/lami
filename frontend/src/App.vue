@@ -24,7 +24,10 @@ const logout = () => {
   closeMenu()
 }
 
-const isAdmin = computed(() => user.value?.type_of_user === 'admin')
+const isAdmin = computed(() => {
+  const role = user.value?.role
+  return role === 'overseer' || role === 'motor_scribe'
+})
 
 hydrateUser()
 

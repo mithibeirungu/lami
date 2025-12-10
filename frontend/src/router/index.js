@@ -65,7 +65,24 @@ const router = createRouter({
     {
       path: '/admin',
       name: 'admin',
-      component: () => import('../views/AdminHome.vue')
+      beforeEnter: (to, from, next) => {
+        try {
+          const user = JSON.parse(localStorage.getItem('user') || 'null')
+          if (!user) {
+            // Not logged in, go to admin registration
+            return next({ name: 'admin-register' })
+          }
+          // Logged in, check if admin
+          if (user.role === 'overseer' || user.role === 'motor_scribe') {
+            // Is admin, go to dashboard
+            return next({ name: 'admin-dashboard' })
+          }
+          // Logged in but not admin, go to home
+          return next({ name: 'home' })
+        } catch (e) {
+          return next({ name: 'admin-register' })
+        }
+      }
     },
     {
       path: '/admin/dashboard',
@@ -74,11 +91,11 @@ const router = createRouter({
       beforeEnter: (to, from, next) => {
         try {
           const user = JSON.parse(localStorage.getItem('user') || 'null')
-          if (!user || user.type_of_user !== 'admin') {
-            return next({ name: 'login' })
+          if (!user || (user.role !== 'overseer' && user.role !== 'motor_scribe')) {
+            return next({ name: 'admin' })
           }
         } catch (e) {
-          return next({ name: 'login' })
+          return next({ name: 'admin' })
         }
         next()
       }

@@ -3,18 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\Favorite;
+use App\Models\Car;
 use Illuminate\Http\Request;
 
 class FavoriteController extends Controller
 {
     // TOGGLE FAVORITE
-    public function toggle(Request $request, $carId)
+    public function toggle(Request $request, Car $car)
     {
         $user = $request->user();
-        $userId = $user ? $user->id : $request->input('user_id');
 
-        $fav = Favorite::where('user_id', $userId)
-                       ->where('post_id', $carId)
+        $fav = Favorite::where('user_id', $user->user_id)
+                       ->where('car_id', $car->car_id)
                        ->first();
 
         if ($fav) {
@@ -23,8 +23,8 @@ class FavoriteController extends Controller
         }
 
         Favorite::create([
-            'user_id' => $userId,
-            'post_id' => $carId,
+            'user_id' => $user->user_id,
+            'car_id' => $car->car_id,
         ]);
 
         return response()->json(['message' => 'Added to favorites']);
@@ -34,10 +34,9 @@ class FavoriteController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $userId = $user ? $user->id : $request->input('user_id');
 
-        return Favorite::with('car')
-            ->where('user_id', $userId)
+        return Favorite::with(['car.brand', 'car.bodyType', 'car.images'])
+            ->where('user_id', $user->user_id)
             ->get();
     }
 }

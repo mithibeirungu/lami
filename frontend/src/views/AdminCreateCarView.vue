@@ -1,25 +1,43 @@
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import api from '../services/api'
 import { useRouter } from 'vue-router'
 
-const car_name = ref('')
-const brand = ref('')
+const title = ref('')
+const brand_id = ref('')
 const model = ref('')
 const year = ref(new Date().getFullYear())
+const body_type_id = ref('')
 const description = ref('')
-const price = ref(0)
-const body_type = ref('')
-const fuel_type = ref('')
-const engine_power = ref(0)
+const thumbnail_image = ref('')
 const transmission = ref('')
-const top_speed = ref(0)
-const acceleration = ref(0.0)
-const image_url = ref('')
+const fuel_type = ref('')
+const engine_type = ref('')
+const engine_size = ref('')
+const horsepower = ref(0)
+const torque = ref(0)
+const seating_capacity = ref(5)
+const drive_type = ref('')
+const price = ref(0)
 
+const brands = ref([])
+const bodyTypes = ref([])
 const router = useRouter()
 const errors = reactive({})
 const submitting = ref(false)
+
+onMounted(async () => {
+  try {
+    const [brandsRes, bodyTypesRes] = await Promise.all([
+      api.getBrands(),
+      api.getBodyTypes(),
+    ])
+    brands.value = brandsRes.data
+    bodyTypes.value = bodyTypesRes.data
+  } catch (e) {
+    console.error('Failed to load brands or body types:', e)
+  }
+})
 
 function clearErrors() {
   for (const k in errors) delete errors[k]
@@ -27,10 +45,11 @@ function clearErrors() {
 
 const validate = () => {
   clearErrors()
-  if (!car_name.value) errors.car_name = 'Name is required'
-  if (!brand.value) errors.brand = 'Brand is required'
+  if (!title.value) errors.title = 'Title is required'
+  if (!brand_id.value) errors.brand_id = 'Brand is required'
   if (!model.value) errors.model = 'Model is required'
   if (!year.value || isNaN(year.value)) errors.year = 'Valid year is required'
+  if (!body_type_id.value) errors.body_type_id = 'Body type is required'
   return Object.keys(errors).length === 0
 }
 
@@ -39,19 +58,22 @@ const submit = async () => {
   submitting.value = true
 
   const payload = {
-    car_name: car_name.value,
-    brand: brand.value,
+    title: title.value,
+    brand_id: Number(brand_id.value),
     model: model.value,
     year: Number(year.value),
+    body_type_id: Number(body_type_id.value),
     description: description.value,
-    price: Number(price.value) || 0.0,
-    body_type: body_type.value,
-    fuel_type: fuel_type.value,
-    engine_power: Number(engine_power.value) || 0,
+    thumbnail_image: thumbnail_image.value,
     transmission: transmission.value,
-    top_speed: Number(top_speed.value) || 0,
-    acceleration: Number(acceleration.value) || 0.0,
-    image_url: image_url.value,
+    fuel_type: fuel_type.value,
+    engine_type: engine_type.value,
+    engine_size: engine_size.value,
+    horsepower: Number(horsepower.value) || 0,
+    torque: Number(torque.value) || 0,
+    seating_capacity: Number(seating_capacity.value) || 5,
+    drive_type: drive_type.value,
+    price: Number(price.value) || 0,
   }
 
   try {
@@ -59,11 +81,10 @@ const submit = async () => {
     router.push('/')
   } catch (e) {
     console.error(e)
-    // show server validation errors if available
     if (e.response && e.response.data && typeof e.response.data === 'object') {
       const data = e.response.data
       if (data.errors) {
-        for (const k in data.errors) errors[k] = data.errors[k][0]
+        for (const k in data.errors) errors[k] = data.errors[k][0] || data.errors[k]
       } else if (data.message) {
         errors.general = data.message
       } else {
@@ -79,88 +100,161 @@ const submit = async () => {
 </script>
 
 <template>
-  <div class="form-card">
-    <h2>Write New Article</h2>
-
-    <div class="field">
-      <label>Name</label>
-      <input v-model="car_name" />
-      <div class="error" v-if="errors.car_name">{{ errors.car_name }}</div>
+  <div class="create-car-container">
+    <div class="form-header">
+      <h1>Create New Car Listing</h1>
+      <p class="form-subtitle">Add a new vehicle to the marketplace</p>
     </div>
 
-    <div class="two-cols">
-      <div class="field">
-        <label>Brand</label>
-        <input v-model="brand" />
-        <div class="error" v-if="errors.brand">{{ errors.brand }}</div>
-      </div>
-      <div class="field">
-        <label>Model</label>
-        <input v-model="model" />
-        <div class="error" v-if="errors.model">{{ errors.model }}</div>
-      </div>
-    </div>
+    <div class="form-wrapper">
+      <!-- Basic Information Section -->
+      <div class="form-section">
+        <div class="section-header">
+          <h3>Basic Information</h3>
+          <span class="section-badge">Required</span>
+        </div>
 
-    <div class="two-cols">
-      <div class="field">
-        <label>Year</label>
-        <input type="number" v-model.number="year" />
-        <div class="error" v-if="errors.year">{{ errors.year }}</div>
-      </div>
-      <div class="field">
-        <label>Price</label>
-        <input type="number" v-model.number="price" />
-      </div>
-    </div>
+        <div class="field">
+          <label>Title *</label>
+          <input v-model="title" placeholder="e.g. 2024 Tesla Model S Plaid" class="field-input" />
+          <div class="error" v-if="errors.title">{{ errors.title }}</div>
+        </div>
 
-    <div class="two-cols">
-      <div class="field">
-        <label>Body type</label>
-        <input v-model="body_type" placeholder="e.g. Sedan, Coupe" />
-      </div>
-      <div class="field">
-        <label>Fuel type</label>
-        <input v-model="fuel_type" placeholder="e.g. Petrol, Electric" />
-      </div>
-    </div>
+        <div class="two-cols">
+          <div class="field">
+            <label>Brand *</label>
+            <select v-model="brand_id" class="field-input">
+              <option value="">Select a brand</option>
+              <option v-for="b in brands" :key="b.brand_id" :value="b.brand_id">{{ b.name }}</option>
+            </select>
+            <div class="error" v-if="errors.brand_id">{{ errors.brand_id }}</div>
+          </div>
+          <div class="field">
+            <label>Model *</label>
+            <input v-model="model" placeholder="e.g. Model S" class="field-input" />
+            <div class="error" v-if="errors.model">{{ errors.model }}</div>
+          </div>
+        </div>
 
-    <div class="two-cols">
-      <div class="field">
-        <label>Engine power (hp)</label>
-        <input type="number" v-model.number="engine_power" />
+        <div class="two-cols">
+          <div class="field">
+            <label>Year *</label>
+            <input type="number" v-model.number="year" class="field-input" />
+            <div class="error" v-if="errors.year">{{ errors.year }}</div>
+          </div>
+          <div class="field">
+            <label>Body Type *</label>
+            <select v-model="body_type_id" class="field-input">
+              <option value="">Select body type</option>
+              <option v-for="bt in bodyTypes" :key="bt.body_type_id" :value="bt.body_type_id">{{ bt.name }}</option>
+            </select>
+            <div class="error" v-if="errors.body_type_id">{{ errors.body_type_id }}</div>
+          </div>
+        </div>
       </div>
-      <div class="field">
-        <label>Transmission</label>
-        <input v-model="transmission" />
+
+      <!-- Technical Specifications Section -->
+      <div class="form-section">
+        <div class="section-header">
+          <h3>Technical Specifications</h3>
+          <span class="section-badge">Optional</span>
+        </div>
+
+        <div class="two-cols">
+          <div class="field">
+            <label>Engine Type</label>
+            <input v-model="engine_type" placeholder="e.g. V6, Inline 4, Electric Motor" class="field-input" />
+          </div>
+          <div class="field">
+            <label>Engine Size</label>
+            <input v-model="engine_size" placeholder="e.g. 3.0L, 2.5L" class="field-input" />
+          </div>
+        </div>
+
+        <div class="two-cols">
+          <div class="field">
+            <label>Transmission</label>
+            <input v-model="transmission" placeholder="e.g. Manual, Automatic, CVT" class="field-input" />
+          </div>
+          <div class="field">
+            <label>Fuel Type</label>
+            <input v-model="fuel_type" placeholder="e.g. Petrol, Diesel, Electric" class="field-input" />
+          </div>
+        </div>
+
+        <div class="two-cols">
+          <div class="field">
+            <label>Horsepower</label>
+            <input type="number" v-model.number="horsepower" placeholder="e.g. 350" class="field-input" />
+          </div>
+          <div class="field">
+            <label>Torque (Nm)</label>
+            <input type="number" v-model.number="torque" placeholder="e.g. 450" class="field-input" />
+          </div>
+        </div>
+
+        <div class="two-cols">
+          <div class="field">
+            <label>Drive Type</label>
+            <input v-model="drive_type" placeholder="e.g. RWD, AWD, FWD" class="field-input" />
+          </div>
+          <div class="field">
+            <label>Seating Capacity</label>
+            <input type="number" v-model.number="seating_capacity" placeholder="e.g. 5" class="field-input" />
+          </div>
+        </div>
       </div>
-    </div>
 
-    <div class="two-cols">
-      <div class="field">
-        <label>Top speed (km/h)</label>
-        <input type="number" v-model.number="top_speed" />
+      <!-- Pricing & Images Section -->
+      <div class="form-section">
+        <div class="section-header">
+          <h3>Pricing & Media</h3>
+          <span class="section-badge">Optional</span>
+        </div>
+
+        <div class="field">
+          <label>Price</label>
+          <div class="input-prefix">
+            <span class="prefix">$</span>
+            <input type="number" v-model.number="price" placeholder="0.00" class="field-input" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Thumbnail Image URL</label>
+          <input v-model="thumbnail_image" placeholder="https://example.com/image.jpg" class="field-input" />
+          <p class="field-hint">Provide a high-quality image URL for the car thumbnail</p>
+        </div>
       </div>
-      <div class="field">
-        <label>0-100 km/h (s)</label>
-        <input type="number" step="0.1" v-model.number="acceleration" />
+
+      <!-- Description Section -->
+      <div class="form-section">
+        <div class="section-header">
+          <h3>Description</h3>
+          <span class="section-badge">Optional</span>
+        </div>
+
+        <div class="field">
+          <label>Car Description</label>
+          <textarea v-model="description" placeholder="Describe the car, its features, condition, and any special details..." class="field-input textarea-input"></textarea>
+          <p class="field-hint">{{ description.length }} / 1000 characters</p>
+        </div>
       </div>
-    </div>
 
-    <div class="field">
-      <label>Image URL</label>
-      <input v-model="image_url" placeholder="https://..." />
-    </div>
+      <!-- Errors Section -->
+      <div v-if="errors.general" class="error-banner">
+        <span class="error-icon">⚠️</span>
+        {{ errors.general }}
+      </div>
 
-    <div class="field">
-      <label>Description</label>
-      <textarea v-model="description"></textarea>
-    </div>
-
-    <div v-if="errors.general" class="error">{{ errors.general }}</div>
-
-    <div style="margin-top:12px">
-      <button class="btn btn-primary" :disabled="submitting" @click="submit">{{ submitting ? 'Publishing...' : 'Publish Article' }}</button>
-      <button class="btn btn-ghost" @click="$router.back()" style="margin-left:8px">Cancel</button>
+      <!-- Form Actions -->
+      <div class="form-actions">
+        <button class="btn btn-primary btn-lg" :disabled="submitting" @click="submit">
+          <span v-if="!submitting">✓ Create Car Listing</span>
+          <span v-else>Creating...</span>
+        </button>
+        <button class="btn btn-ghost btn-lg" @click="$router.back()">Cancel</button>
+      </div>
     </div>
   </div>
 </template>

@@ -13,85 +13,29 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $request->validate([
-            'username' => 'required',
+            'username' => 'required|unique:users,username',
             'email' => 'required|email|unique:users,email',
             'full_name' => 'required',
             'password' => 'required|min:6',
+            'password_confirmation' => 'required|same:password',
+            'role' => 'nullable|in:driver,motor_scribe,overseer',
         ]);
+
+        // Default to driver role, but allow selection
+        $role = $request->role ?? 'driver';
 
         $user = User::create([
             'username' => $request->username,
             'email' => $request->email,
             'full_name' => $request->full_name,
-            'password' => bcrypt($request->password),
-            'type_of_user' => 'user', // default
+            'password_hash' => Hash::make($request->password),
+            'role' => $role,
         ]);
 
         return response()->json([
             'message' => 'User registered',
             'user' => $user
-        ]);
-    }
-
-    // REGISTER ADMIN (via invite code)
-    public function registerAdmin(Request $request)
-    {
-        $request->validate([
-            'username' => 'required',
-            'email' => 'required|email|unique:users,email',
-            'full_name' => 'required',
-            'password' => 'required|min:6',
-            'invite_code' => 'nullable',
-        ]);
-
-        // If there are no admins yet, allow first admin to be created without an invite
-        $anyAdmin = User::where('type_of_user', 'admin')->exists();
-        if (!$anyAdmin) {
-            $user = User::create([
-                'username' => $request->username,
-                'email' => $request->email,
-                'full_name' => $request->full_name,
-                'password' => bcrypt($request->password),
-                'type_of_user' => 'admin',
-            ]);
-
-            return response()->json([
-                'message' => 'First admin created (bootstrap)',
-                'user' => $user
-            ]);
-        }
-
-        // locate invitation
-        $invite = \App\Models\AdminInvitation::where('code', $request->invite_code)->first();
-        if (!$invite) {
-            return response()->json(['message' => 'Invalid invite code'], 403);
-        }
-
-        if (!$invite->isUsable()) {
-            return response()->json(['message' => 'Invite code expired or already used'], 403);
-        }
-
-        // optional: if invite has an email set, ensure it matches
-        if ($invite->email && strtolower($invite->email) !== strtolower($request->email)) {
-            return response()->json(['message' => 'Invite code not valid for this email'], 403);
-        }
-
-        $user = User::create([
-            'username' => $request->username,
-            'email' => $request->email,
-            'full_name' => $request->full_name,
-            'password' => bcrypt($request->password),
-            'type_of_user' => 'admin',
-        ]);
-
-        // mark invite used
-        $invite->used_at = now();
-        $invite->save();
-
-        return response()->json([
-            'message' => 'Admin registered',
-            'user' => $user
-        ]);
+        ], 201);
     }
 
     // LOGIN
@@ -104,7 +48,7 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user || !Hash::check($request->password, $user->password_hash)) {
             return response()->json(['message' => 'Invalid credentials'], 401);
         }
 

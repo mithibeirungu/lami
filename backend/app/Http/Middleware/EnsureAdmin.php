@@ -10,7 +10,7 @@ class EnsureAdmin
     public function handle(Request $request, Closure $next)
     {
         $user = $request->user();
-        if (!$user || ($user->type_of_user ?? '') !== 'admin') {
+        if (!$user || !in_array($user->role ?? '', ['overseer', 'motor_scribe'])) {
             return response()->json(['message' => 'Forbidden. Admins only.'], 403);
         }
 

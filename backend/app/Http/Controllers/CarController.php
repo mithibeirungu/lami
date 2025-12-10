@@ -3,82 +3,168 @@
 namespace App\Http\Controllers;
 
 use App\Models\Car;
+use App\Models\CarImage;
 use Illuminate\Http\Request;
 
 class CarController extends Controller
 {
-    // LIST ALL CARS
+    // LIST ALL CARS (with relationships)
     public function index()
     {
-        return Car::with('admin')->latest()->get();
+        return Car::with(['brand', 'bodyType', 'creator', 'images', 'comments', 'favorites'])
+            ->latest('created_at')
+            ->get();
     }
 
-    // CREATE A CAR (Admin)
+    // CREATE A CAR (Admin only)
     public function store(Request $request)
     {
         $request->validate([
-            'car_name' => 'required',
-            'brand' => 'required',
+            'title' => 'required',
+            'brand_id' => 'required|exists:brands,brand_id',
             'model' => 'required',
-            'year' => 'required|integer',
+            'year' => 'required|integer|min:1900|max:2100',
+            'body_type_id' => 'required|exists:body_types,body_type_id',
+            'transmission' => 'nullable|string',
+            'fuel_type' => 'nullable|string',
+            'engine_type' => 'nullable|string',
+            'engine_size' => 'nullable|string',
+            'horsepower' => 'nullable|integer|min:0',
+            'torque' => 'nullable|integer|min:0',
+            'seating_capacity' => 'nullable|integer|min:1',
+            'drive_type' => 'nullable|string',
+            'description' => 'nullable|string',
+            'thumbnail_image' => 'nullable|url',
+            'price' => 'nullable|numeric|min:0',
+            'images' => 'nullable|array',
         ]);
 
         $user = $request->user();
-        if (!$user || $user->type_of_user !== 'admin') {
-            return response()->json(['message' => 'Unauthorized. Admins only.'], 403);
-        }
 
         $car = Car::create([
-            'admin_id' => $user->id,
-            'user_id' => $user->id,
-            'car_name' => $request->car_name,
-            'brand' => $request->brand,
+            'title' => $request->title,
+            'brand_id' => $request->brand_id,
             'model' => $request->model,
             'year' => $request->year,
-            'body_type' => $request->input('body_type', ''),
-            'fuel_type' => $request->input('fuel_type', ''),
-            'engine_power' => $request->input('engine_power', 0),
-            'transmission' => $request->input('transmission', ''),
-            'top_speed' => $request->input('top_speed', 0),
-            'acceleration' => $request->input('acceleration', 0.0),
-            'description' => $request->input('description', ''),
-            'image_url' => $request->input('image_url', ''),
-            'price' => $request->input('price', 0.0),
+            'body_type_id' => $request->body_type_id,
+            'transmission' => $request->transmission,
+            'fuel_type' => $request->fuel_type,
+            'engine_type' => $request->engine_type,
+            'engine_size' => $request->engine_size,
+            'horsepower' => $request->horsepower,
+            'torque' => $request->torque,
+            'seating_capacity' => $request->seating_capacity,
+            'drive_type' => $request->drive_type,
+            'description' => $request->description,
+            'thumbnail_image' => $request->thumbnail_image,
+            'price' => $request->price,
+            'created_by' => $user->user_id,
         ]);
 
-        return response()->json($car);
+        // Add primary image if provided
+        if ($request->thumbnail_image) {
+            CarImage::create([
+                'car_id' => $car->car_id,
+                'image_url' => $request->thumbnail_image,
+                'title' => 'Main Image',
+                'is_primary' => true,
+            ]);
+        }
+
+        // Add additional images if provided
+        if ($request->has('images') && is_array($request->images)) {
+            foreach ($request->images as $idx => $imageUrl) {
+                if ($imageUrl) {
+                    CarImage::create([
+                        'car_id' => $car->car_id,
+                        'image_url' => $imageUrl,
+                        'title' => "Image " . ($idx + 1),
+                        'is_primary' => false,
+                    ]);
+                }
+            }
+        }
+
+        return response()->json([
+            'message' => 'Car created',
+            'car' => $car->load(['brand', 'bodyType', 'creator', 'images']),
+        ], 201);
     }
 
     // SHOW A SINGLE CAR
     public function show(Car $car)
     {
-        return $car->load(['comments.user', 'favorites']);
+        return $car->load([
+            'brand',
+            'bodyType',
+            'creator',
+            'images',
+            'comments.user',
+            'favorites'
+        ]);
     }
 
-    // UPDATE A CAR
+    // UPDATE A CAR (Admin only)
     public function update(Request $request, Car $car)
     {
-        $user = $request->user();
-        if (!$user || $user->type_of_user !== 'admin') {
-            return response()->json(['message' => 'Unauthorized. Admins only.'], 403);
-        }
+        $request->validate([
+            'title' => 'sometimes|required',
+            'brand_id' => 'sometimes|required|exists:brands,brand_id',
+            'model' => 'sometimes|required',
+            'year' => 'sometimes|required|integer|min:1900|max:2100',
+            'body_type_id' => 'sometimes|required|exists:body_types,body_type_id',
+            'transmission' => 'nullable|string',
+            'fuel_type' => 'nullable|string',
+            'engine_type' => 'nullable|string',
+            'engine_size' => 'nullable|string',
+            'horsepower' => 'nullable|integer|min:0',
+            'torque' => 'nullable|integer|min:0',
+            'seating_capacity' => 'nullable|integer|min:1',
+            'drive_type' => 'nullable|string',
+            'description' => 'nullable|string',
+            'thumbnail_image' => 'nullable|url',
+            'price' => 'nullable|numeric|min:0',
+        ]);
 
         $car->update($request->only([
-            'car_name','brand','model','year','body_type','fuel_type','engine_power','transmission','top_speed','acceleration','description','image_url','price'
+            'title', 'brand_id', 'model', 'year', 'body_type_id', 'transmission',
+            'fuel_type', 'engine_type', 'engine_size', 'horsepower', 'torque',
+            'seating_capacity', 'drive_type', 'description', 'thumbnail_image', 'price'
         ]));
 
-        return response()->json(['message' => 'Car updated', 'car' => $car]);
-    }
-
-    // DELETE A CAR
-    public function destroy(Car $car)
-    {
-        $user = request()->user();
-        if (!$user || $user->type_of_user !== 'admin') {
-            return response()->json(['message' => 'Unauthorized. Admins only.'], 403);
+        // Update primary image if provided
+        if ($request->thumbnail_image) {
+            $car->images()->where('is_primary', true)->delete();
+            CarImage::create([
+                'car_id' => $car->car_id,
+                'image_url' => $request->thumbnail_image,
+                'title' => 'Main Image',
+                'is_primary' => true,
+            ]);
         }
 
+        return response()->json([
+            'message' => 'Car updated',
+            'car' => $car->load(['brand', 'bodyType', 'creator', 'images']),
+        ]);
+    }
+
+    // DELETE A CAR (Admin only)
+    public function destroy(Car $car)
+    {
         $car->delete();
         return response()->json(['message' => 'Car deleted']);
+    }
+
+    // GET ALL BRANDS (for dropdowns)
+    public function getBrands()
+    {
+        return response()->json(\App\Models\Brand::select('brand_id', 'name')->get());
+    }
+
+    // GET ALL BODY TYPES (for dropdowns)
+    public function getBodyTypes()
+    {
+        return response()->json(\App\Models\BodyType::select('body_type_id', 'name')->get());
     }
 }

@@ -3,27 +3,28 @@
 namespace App\Http\Controllers;
 
 use App\Models\Comment;
+use App\Models\Car;
 use Illuminate\Http\Request;
 
 class CommentController extends Controller
 {
-    public function store(Request $request, $carId)
+    public function store(Request $request, Car $car)
     {
         $request->validate([
-            'comment_text' => 'required',
-            'rating' => 'nullable|integer|min:1|max:5',
+            'content' => 'required|string',
         ]);
 
         $user = $request->user();
-        $userId = $user ? $user->id : $request->input('user_id');
 
         $comment = Comment::create([
-            'post_id' => $carId,
-            'user_id' => $userId,
-            'comment_text' => $request->comment_text,
-            'rating' => $request->rating,
+            'car_id' => $car->car_id,
+            'user_id' => $user->user_id,
+            'content' => $request->content,
         ]);
 
-        return response()->json($comment);
+        return response()->json([
+            'message' => 'Comment posted',
+            'comment' => $comment->load('user'),
+        ], 201);
     }
 }
